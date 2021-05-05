@@ -1,2 +1,12 @@
 .vscode/
-build/*
+build/.cmake/
+build/CMakeFiles
+build/Testing
+build/*.exe
+build/*.dll
+build/*.txt
+build/*.png
+build/Makefile
+build/*.cmake
+build/*.json
+build/*.tcl
