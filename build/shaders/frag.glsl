@@ -6,12 +6,50 @@
 uniform vec2 iResolution;
 uniform float iTime;
 
-const int MAX_MARCHING_STEPS = 255;
-const float MIN_DIST = 0.0;
-const float MAX_DIST = 100.0;
-const float EPSILON = 0.0001;
+const int MAX_MARCHING_STEPS = 250;
+const float MAX_DIST = 200.0;
+const float EPSILON = 0.001;
 
-const float power = 10.0;
+uniform float power;
+uniform float darkness;
+uniform float blackAndWhite;
+uniform vec3 colorAMix;
+uniform vec3 colorBMix;
+
+const vec3 LightDirection = vec3(-0.3, -0.8, 0.6);
+
+struct Ray {
+  vec3 origin;
+  vec3 direction;
+};
+
+Ray CreateRay(in vec3 origin, in vec3 direction) {
+  Ray ray;
+  ray.origin = origin;
+  ray.direction = direction;
+  return ray;
+}
+
+Ray CreateCameraRay(in vec2 uv) {
+  mat4 CameraToWorld;
+  CameraToWorld[0] = vec4(1.0, 0.0, 0.0, 0.0);
+  CameraToWorld[1] = vec4(0.0, 1.0, 0.0, 0.0);
+  CameraToWorld[2] = vec4(0.0, 0.0, -1.0, -2.0);
+  CameraToWorld[3] = vec4(0.0, 0.0, 0.0, 1.0);
+
+  mat4 CameraInverseProjection;
+  CameraInverseProjection[0] = vec4(0.90016, 0.0, 0.0, 0.0);
+  CameraInverseProjection[1] = vec4(0.0, 0.57735, 0.0, 0.0);
+  CameraInverseProjection[2] = vec4(0.0, 0.0, 0.0, -1.0);
+  CameraInverseProjection[3] = vec4(0.0, 0.0, -1.66617, 1.66717);
+
+  vec3 origin = vec3(vec4(0,0,0,1) * CameraToWorld).xyz;
+  vec3 direction = vec3(vec4(uv,0,1) * CameraInverseProjection).xyz;
+  direction = vec3(vec4(direction, 0) * CameraToWorld).xyz;
+  direction = normalize(direction);
+
+  return CreateRay(origin, direction);
+}
 
 vec2 DE(in vec3 p) {
   // p = p + 1. * vec3(0, -0.5*iTime, iTime);
@@ -59,74 +97,53 @@ vec2 DE(in vec3 p) {
   // return r / abs(dr);
 }
 
-vec2 sceneDE(in vec3 p)
-{
-  return DE(p);
-}
+vec3 EstimateNormal(in vec3 p) {
+  float x = DE(vec3(p.x + EPSILON, p.y, p.z)).y - DE(vec3(p.x - EPSILON, p.y, p.z)).y;
+  float y = DE(vec3(p.x, p.y + EPSILON, p.z)).y - DE(vec3(p.x, p.y - EPSILON, p.z)).y;
+  float z = DE(vec3(p.x, p.y, p.z + EPSILON)).y - DE(vec3(p.x, p.y, p.z - EPSILON)).y;
 
-vec3 calculate_normal(in vec3 p)
-{
-    return normalize(vec3(
-      sceneDE(vec3(p.x + EPSILON, p.y, p.z)).y - sceneDE(vec3(p.x - EPSILON, p.y, p.z)).y,
-      sceneDE(vec3(p.x, p.y + EPSILON, p.z)).y - sceneDE(vec3(p.x, p.y - EPSILON, p.z)).y,
-      sceneDE(vec3(p.x, p.y, p.z  + EPSILON)).y - sceneDE(vec3(p.x, p.y, p.z - EPSILON)).y
-    ));
-}
-
-vec3 raymarch(in vec3 ro, in vec3 rd, in vec2 uv) {
-    float total_distance_traveled = 0.0;
-    const int NUMBER_OF_STEPS = 32;
-    const float MINIMUM_HIT_DISTANCE = 0.001;
-    const float MAXIMUM_TRACE_DISTANCE = 1000.0;
-
-    vec4 result = mix(vec4(51, 3, 20, 1), vec4(16, 6, 28, 1), uv.y) / 255.0;
-
-    for (int i = 0; i < NUMBER_OF_STEPS; ++i)
-    {
-        vec3 current_position = ro + total_distance_traveled * rd;
-
-        float distance_to_closest = sceneDE(current_position).y;
-
-        vec2 sceneInfo = DE(ro);
-        float dst = sceneInfo.y;
-
-        if (distance_to_closest < MINIMUM_HIT_DISTANCE) 
-        {
-            // vec3 normal = calculate_normal(current_position);
-            vec3 light_position = vec3(2.0, -5.0, 3.0);
-            // vec3 direction_to_light = normalize(current_position - light_position);
-
-            // float diffuse_intensity = max(0.0, dot(normal, direction_to_light));
-
-            // return vec3(0.8, 0.0, 0.8) * diffuse_intensity;
-
-            float escapeIterations = sceneInfo.x;
-            vec3 normal = calculate_normal(ro - rd * EPSILON * 2);
-            float colorA = clamp(dot(normal * 0.5 + 0.5, -light_position), 0.0, 1.0);
-            float colorB = clamp(escapeIterations/16.0, 0.0, 1.0);
-            float colorMix = clamp(colorA + colorB, 0.0, 1.0);
-            // result = vec3(colorMix.xyz);
-            return vec3(colorMix, colorMix, colorMix);
-        }
-
-        if (total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
-        {
-            break;
-        }
-        total_distance_traveled += distance_to_closest;
-    }
-    return vec3(0);
+  return normalize(vec3(x,y,z));
 }
 
 void main()
 {
-    vec2 uv = (gl_FragCoord.xy - 0.5*iResolution.xy) / iResolution.y;
+    // vec2 uv = (gl_FragCoord.xy - 0.5*iResolution.xy) / iResolution.y;
     // vec2 uv = gl_FragCoord.xy / iResolution.xy * 2 - 1;
-    vec3 camPos = vec3(0, 2, 0);
-    vec3 camViewDir = normalize(vec3(uv.xy, 1));
+    // vec3 camPos = vec3(0, 2, 0);
+    // vec3 camViewDir = normalize(vec3(uv.xy, 1));
 
-    vec3 shaded_color = raymarch(camPos, camViewDir, uv);
+    // vec3 shaded_color = raymarch(camPos, camViewDir, uv);
+
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    vec4 result = mix(vec4(51,3,20,1), vec4(16,16,28,1), uv.y) / 255.0;
+
+    Ray ray = CreateCameraRay(uv * 2 - 1);
+    float rayDst = 0;
+    int marchSteps = 0;
+
+    while (rayDst < MAX_DIST && marchSteps < MAX_MARCHING_STEPS) {
+      marchSteps++;
+      vec2 sceneInfo = DE(ray.origin);
+      float dst = sceneInfo.y;
+
+      if (dst <= EPSILON) {
+        float escapeIterations = sceneInfo.x;
+        vec3 normal = EstimateNormal(ray.origin - ray.direction * EPSILON * 2);
+
+        float colorA = clamp(dot(normal * 0.5 + 0.5,-LightDirection), 0.0, 1.0);
+        float colorB = clamp(escapeIterations / 16.0, 0.0, 1.0);
+        vec3 colorMix = clamp(colorA * colorAMix + colorB * colorBMix, 0.0, 1.0);
+
+        result = vec4(colorMix.xyz, 1);
+        break;
+      }
+
+      ray.origin += ray.direction * dst;
+      rayDst += dst;
+    }
 
     // Output to screen
-    gl_FragColor = vec4(shaded_color, 1.0);
+    float rim = marchSteps / darkness;
+
+    gl_FragColor = mix(result, vec4(1,1,1,1), vec4(blackAndWhite,blackAndWhite,blackAndWhite, blackAndWhite)) * rim;
 }
