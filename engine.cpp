@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <SFML/OpenGL.hpp>
 #include <INI/SimpleIni.h>
 #include <iostream>
@@ -17,6 +18,8 @@ float BLACKANDWHITE;
 float COLORAMIX;
 float COLORBMIX;
 
+std::string SONG;
+
 void InitSettings() {
   CSimpleIniA ini;
   
@@ -26,13 +29,20 @@ void InitSettings() {
   } else {
     std::cout << "[!] Loaded config file" << std::endl;
 
+    // Integer
     HEIGHT = atoi(ini.GetValue("APPLICATION", "height", "default"));
     WIDTH = atoi(ini.GetValue("APPLICATION", "width", "default"));
+
+    // Float
     POWER = atof(ini.GetValue("MANDELBULB", "power", "default"));
     DARKNESS = atof(ini.GetValue("MANDELBULB", "darkness", "default"));
     BLACKANDWHITE = atof(ini.GetValue("MANDELBULB", "blackAndWhite", "default"));
     COLORAMIX = atof(ini.GetValue("MANDELBULB", "colorAMix", "default"));
     COLORBMIX = atof(ini.GetValue("MANDELBULB", "colorBMix", "default"));
+
+    // std:string
+    const char* songChar = ini.GetValue("MUSIC", "song", "default");
+    SONG = songChar;
   }
 }
 
@@ -49,6 +59,19 @@ int main() {
   sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Fractual Visualizer", sf::Style::Default, settings);
   window.setFramerateLimit(60);
   window.setActive(true);
+
+  sf::SoundBuffer buffer;
+  if (!buffer.loadFromFile("songs/" + SONG)) {
+    std::cout << "[!] Could not load song" << std::endl;
+    return 1;
+  } else {
+    std::cout << "[!] Loaded song: " << SONG << std::endl;
+  }
+
+  sf::Sound song;
+  song.setBuffer(buffer);
+  song.play();
+  std::cout << "[!] Playing song & starting visualizer" << std::endl;
 
   sf::RectangleShape rect;
   rect.setSize(sf::Vector2f((float)WIDTH, (float)HEIGHT));
@@ -97,16 +120,18 @@ int main() {
     sf::Time elapsed = clock.getElapsedTime();
     // shader.setUniform("iTime", (float)elapsed.asSeconds());
 
-    shader.setUniform("power", POWER);
+    float currTime = (float)elapsed.asSeconds();
+    shader.setUniform("power", POWER * (currTime / 4));
     shader.setUniform("darkness", DARKNESS);
     shader.setUniform("blackAndWhite", BLACKANDWHITE);
     shader.setUniform("colorAMix", sf::Glsl::Vec3(COLORAMIX,COLORAMIX,COLORAMIX));
     shader.setUniform("colorBMix", sf::Glsl::Vec3(COLORBMIX,COLORBMIX,COLORBMIX));
 
     // clear the buffers
-    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    sf::Color clearColor(0, 0, 0, 255);
+    window.clear(clearColor);
 
-    // draw...
+    // draw fractal
     window.draw(rect, &shader);
 
 
