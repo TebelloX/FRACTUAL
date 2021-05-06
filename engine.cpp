@@ -6,6 +6,8 @@
 #include <complex>
 #include <math.h>
 #include <fstream>
+#include <AUDIO/AudioFile.h>
+#include <FFT/kiss_fft.h>
 
 /**
  * INIT SETTINGS VARIABLES
@@ -19,6 +21,14 @@ float COLORAMIX;
 float COLORBMIX;
 
 std::string SONG;
+
+/* ----------[HELPER FUNCTIONS]---------- */
+
+// rounds float to 2 decimal places
+float truncf2d(float var) {
+  float value = (int)(var * 100000 + 0.5);
+  return (float)value / 100000;
+}
 
 void InitSettings() {
   CSimpleIniA ini;
@@ -34,17 +44,19 @@ void InitSettings() {
     WIDTH = atoi(ini.GetValue("APPLICATION", "width", "default"));
 
     // Float
-    POWER = atof(ini.GetValue("MANDELBULB", "power", "default"));
-    DARKNESS = atof(ini.GetValue("MANDELBULB", "darkness", "default"));
-    BLACKANDWHITE = atof(ini.GetValue("MANDELBULB", "blackAndWhite", "default"));
-    COLORAMIX = atof(ini.GetValue("MANDELBULB", "colorAMix", "default"));
-    COLORBMIX = atof(ini.GetValue("MANDELBULB", "colorBMix", "default"));
+    POWER = atof(ini.GetValue("MANDLEBULB", "power", "default"));
+    DARKNESS = atof(ini.GetValue("MANDLEBULB", "darkness", "default"));
+    BLACKANDWHITE = atof(ini.GetValue("MANDLEBULB", "blackAndWhite", "default"));
+    COLORAMIX = atof(ini.GetValue("MANDLEBULB", "colorAMix", "default"));
+    COLORBMIX = atof(ini.GetValue("MANDLEBULB", "colorBMix", "default"));
 
     // std:string
     const char* songChar = ini.GetValue("MUSIC", "song", "default");
     SONG = songChar;
   }
 }
+
+/* -------------------------------------- */
 
 int main() {
   InitSettings();
@@ -56,33 +68,56 @@ int main() {
   settings.majorVersion = 3;
   settings.minorVersion = 0;
 
-  sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Fractual Visualizer", sf::Style::Default, settings);
+  sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "FRACTUAL v0.1", sf::Style::Default, settings);
   window.setFramerateLimit(60);
   window.setActive(true);
+  
+  sf::Image icon;
+  icon.loadFromFile("resources/icon.png");
 
-  sf::SoundBuffer buffer;
-  if (!buffer.loadFromFile("songs/" + SONG)) {
-    std::cout << "[!] Could not load song" << std::endl;
+  window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+
+  // sf::SoundBuffer buffer;
+  // if (!buffer.loadFromFile("songs/" + SONG)) {
+  //   std::cout << "[!] Could not load song" << std::endl;
+  //   return 1;
+  // } else {
+  //   std::cout << "[!] Loaded song: " << SONG << std::endl;
+  // }
+
+  // sf::Sound song;
+  // song.setBuffer(buffer);
+  // song.play();
+
+  std::cout << "[!] Playing song & starting visualizer" << std::endl;
+
+  // DSP stuff
+
+
+  sf::Font font;
+  if (!font.loadFromFile("fonts/FiraCode-Regular.ttf")) {
     return 1;
-  } else {
-    std::cout << "[!] Loaded song: " << SONG << std::endl;
   }
 
-  sf::Sound song;
-  song.setBuffer(buffer);
-  song.play();
-  std::cout << "[!] Playing song & starting visualizer" << std::endl;
+  sf::Text FPS_TEXT;
+  FPS_TEXT.setFont(font);
+  FPS_TEXT.setString("FPS: 0");
+  FPS_TEXT.setCharacterSize(12);
+  FPS_TEXT.setFillColor(sf::Color::Cyan);
+
+  sf::Text POWER_TEXT;
+  POWER_TEXT.setPosition(0.f, 14.f);
+  POWER_TEXT.setFont(font);
+  POWER_TEXT.setString("POWER: 0");
+  POWER_TEXT.setCharacterSize(12);
+  POWER_TEXT.setFillColor(sf::Color::Red);
 
   sf::RectangleShape rect;
   rect.setSize(sf::Vector2f((float)WIDTH, (float)HEIGHT));
 
-  // sf::Texture tex;
-  // tex.create(WIDTH, HEIGHT);
-  // sf::Sprite spr(tex);
-
   if (!sf::Shader::isAvailable()) {
-  // shaders no available
-  return 1;
+    // shaders not available
+    return 1;
   }
 
   sf::Shader shader;
@@ -91,7 +126,7 @@ int main() {
     return 1;
   }
 
-  if (!shader.loadFromFile("shaders/frag.glsl", sf::Shader::Fragment)) {
+  if (!shader.loadFromFile("shaders/cosmos.glsl", sf::Shader::Fragment)) {
     std::cout << "[!] Could not load fragment shader" << std::endl;
     return 1;
   }
@@ -101,9 +136,11 @@ int main() {
   shader.setUniform("iResolution", sf::Glsl::Vec2(WIDTH, HEIGHT));
 
   sf::Clock clock;
+  float prevTime = 0.f;
 
   // Main render loop
   bool running = true;
+
   while (running) {
     // handle events
     sf::Event event;
@@ -113,12 +150,16 @@ int main() {
         running = false;
       } else if (event.type == sf::Event::Resized) {
         // adjust the viewport when the window is resized
-
+        shader.setUniform("iResolution", sf::Glsl::Vec2(WIDTH, HEIGHT));
+      } else if (event.type == sf::Event::KeyPressed) {
+        if (event.key.code == sf::Keyboard::Space) {
+          POWER = 1.0;
+        }
       }
-    }
+    } 
 
     sf::Time elapsed = clock.getElapsedTime();
-    // shader.setUniform("iTime", (float)elapsed.asSeconds());
+    shader.setUniform("iTime", (float)elapsed.asSeconds());
 
     float currTime = (float)elapsed.asSeconds();
     shader.setUniform("power", POWER * (currTime / 4));
@@ -134,6 +175,16 @@ int main() {
     // draw fractal
     window.draw(rect, &shader);
 
+    //draw text
+    float fps = 1.f / (currTime - prevTime);
+    prevTime = currTime;
+    float roundedFps = truncf2d(fps);
+    FPS_TEXT.setString("FPS: " + std::to_string(roundedFps));
+    window.draw(FPS_TEXT);
+
+    float roundedPower = truncf2d(POWER * (currTime / 4));
+    POWER_TEXT.setString("POWER: " + std::to_string(roundedPower));
+    window.draw(POWER_TEXT);
 
     // end the current frame (internally swaps the front and back buffers)
     window.display();

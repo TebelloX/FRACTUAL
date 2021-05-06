@@ -51,12 +51,41 @@ Ray CreateCameraRay(in vec2 uv) {
   return CreateRay(origin, direction);
 }
 
+vec3 boxFold(in vec3 z, in vec3 r) {
+  return clamp(z.xyz, -r, r) * 2.0 - z.xyz;
+}
+
+void sphereFold(inout vec3 z, inout float dz) {
+  float fixedRadius2 = 0.6 + 4.0 * cos(20.0/8.0) + 4.0;
+  float minRadius2 = 0.3;
+  float r2 = dot(z,z);
+  if (r2 < minRadius2) {
+    float temp = (fixedRadius2/minRadius2);
+    z *= temp;
+    dz *= temp;
+  } else if (r2 < fixedRadius2) {
+    float temp = (fixedRadius2 / r2);
+    z *= temp;
+    dz *= temp;
+  }
+}
+
+vec3 mengerFold(in vec3 z) {
+  float a = min(z.x - z.y, 0.0);
+
+	z.x -= a;
+	z.y += a;
+	a = min(z.x - z.z, 0.0);
+	z.x -= a;
+	z.z += a;
+	a = min(z.y - z.z, 0.0);
+	z.y -= a;
+	z.z += a;
+
+  return z;
+}
+
 vec2 DE(in vec3 p) {
-  // p = p + 1. * vec3(0, -0.5*iTime, iTime);
-  // float d1 = distance(mod(p, 2.), vec3(1,1,1))-.54321;
-
-  // return d1;
-
   vec3 z = p;
   float dr = 1.0;
   float r = 0.0;
@@ -84,17 +113,6 @@ vec2 DE(in vec3 p) {
 
   float dst = 0.5*log(r)*r/dr;
   return vec2(iterations, dst*1);
-
-  // vec3 offset = p;
-  // float dr = 1.0;
-  // for (int n = 0; n < 500; n++) {
-  //   Fold(p, dr);
-  //   p = 0.01 * p + offset;
-  //   dr = dr * abs(0.01) + 1.0;
-  // }
-
-  // float r = length(p);
-  // return r / abs(dr);
 }
 
 vec3 EstimateNormal(in vec3 p) {
@@ -107,13 +125,6 @@ vec3 EstimateNormal(in vec3 p) {
 
 void main()
 {
-    // vec2 uv = (gl_FragCoord.xy - 0.5*iResolution.xy) / iResolution.y;
-    // vec2 uv = gl_FragCoord.xy / iResolution.xy * 2 - 1;
-    // vec3 camPos = vec3(0, 2, 0);
-    // vec3 camViewDir = normalize(vec3(uv.xy, 1));
-
-    // vec3 shaded_color = raymarch(camPos, camViewDir, uv);
-
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
     vec4 result = mix(vec4(51,3,20,1), vec4(16,16,28,1), uv.y) / 255.0;
 

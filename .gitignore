@@ -11,3 +11,9 @@ build/*.cmake
 build/*.json
 build/*.tcl
 build/songs/
+
+app.o
+app
+icon.png
+
+dist/
