@@ -1,6 +1,10 @@
 # FRACTUAL
-3D Fractal Visualizer for Music
+FRACTUAL is a 3D rendering 
+engine that generates fractals.
 
-Configure app settings in `build/config.ini`
+![](https://i.imgur.com/dg7ZpGa.jpg)
 
-Available fractals are in `build/shaders/`, however some of them crash.
+-----
+> Configure app settings in `build/config.ini`
+
+> Available fractals are in `build/shaders/`, however some of them crash.
