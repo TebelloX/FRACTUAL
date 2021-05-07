@@ -21,6 +21,7 @@ float COLORAMIX;
 float COLORBMIX;
 
 std::string SONG;
+std::string FRACTAL;
 
 /* ----------[HELPER FUNCTIONS]---------- */
 
@@ -53,6 +54,9 @@ void InitSettings() {
     // std:string
     const char* songChar = ini.GetValue("MUSIC", "song", "default");
     SONG = songChar;
+
+    const char* fractalChar = ini.GetValue("VISUALIZER", "fractal", "default");
+    FRACTAL = fractalChar;
   }
 }
 
@@ -126,7 +130,9 @@ int main() {
     return 1;
   }
 
-  if (!shader.loadFromFile("shaders/cosmos.glsl", sf::Shader::Fragment)) {
+  std::string fractalShader = "shaders/" + FRACTAL + ".glsl";
+
+  if (!shader.loadFromFile(fractalShader, sf::Shader::Fragment)) {
     std::cout << "[!] Could not load fragment shader" << std::endl;
     return 1;
   }
@@ -184,7 +190,7 @@ int main() {
 
     float roundedPower = truncf2d(POWER * (currTime / 4));
     POWER_TEXT.setString("POWER: " + std::to_string(roundedPower));
-    window.draw(POWER_TEXT);
+    // window.draw(POWER_TEXT);
 
     // end the current frame (internally swaps the front and back buffers)
     window.display();
