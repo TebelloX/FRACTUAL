@@ -4,10 +4,12 @@
 #include <INI/SimpleIni.h>
 #include <iostream>
 #include <complex>
-#include <math.h>
+#include <cmath>
+#include <iterator>
 #include <fstream>
+#include <valarray>
 #include <AUDIO/AudioFile.h>
-#include <FFT/kiss_fft.h>
+#include "DSP.h"
 
 /**
  * INIT SETTINGS VARIABLES
@@ -59,7 +61,6 @@ void InitSettings() {
     FRACTAL = fractalChar;
   }
 }
-
 /* -------------------------------------- */
 
 int main() {
@@ -81,22 +82,12 @@ int main() {
 
   window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
 
-  // sf::SoundBuffer buffer;
-  // if (!buffer.loadFromFile("songs/" + SONG)) {
-  //   std::cout << "[!] Could not load song" << std::endl;
-  //   return 1;
-  // } else {
-  //   std::cout << "[!] Loaded song: " << SONG << std::endl;
-  // }
-
-  // sf::Sound song;
-  // song.setBuffer(buffer);
-  // song.play();
-
   std::cout << "[!] Playing song & starting visualizer" << std::endl;
 
   // DSP stuff
-
+  std::string songPath = "songs/" + SONG;
+  const int bufferSize = 16384;
+  FFT _fft(songPath, bufferSize);
 
   sf::Font font;
   if (!font.loadFromFile("fonts/FiraCode-Regular.ttf")) {
@@ -173,6 +164,9 @@ int main() {
     shader.setUniform("blackAndWhite", BLACKANDWHITE);
     shader.setUniform("colorAMix", sf::Glsl::Vec3(COLORAMIX,COLORAMIX,COLORAMIX));
     shader.setUniform("colorBMix", sf::Glsl::Vec3(COLORBMIX,COLORBMIX,COLORBMIX));
+
+
+    _fft.update();
 
     // clear the buffers
     sf::Color clearColor(0, 0, 0, 255);

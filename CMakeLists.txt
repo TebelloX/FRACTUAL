@@ -9,7 +9,7 @@ enable_testing()
 set(SFML_DIR "Y:/SFML-2.5.1/lib/cmake/SFML")
 find_package(SFML COMPONENTS system window graphics main audio REQUIRED)
 
-add_executable(engine engine.cpp app.o)
+add_executable(engine engine.cpp DSP.cpp app.o)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
