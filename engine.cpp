@@ -8,7 +8,6 @@
 #include <iterator>
 #include <fstream>
 #include <valarray>
-#include <AUDIO/AudioFile.h>
 #include "DSP.h"
 
 /**
@@ -88,20 +87,35 @@ int main() {
   std::string songPath = "songs/" + SONG;
   const int bufferSize = 16384;
   FFT _fft(songPath, bufferSize);
+  _fft.sensitivity = 8; // [higher => higher minimum amplitude]
 
   sf::Font font;
   if (!font.loadFromFile("fonts/FiraCode-Regular.ttf")) {
     return 1;
   }
 
+  sf::Text MENU_TEXT;
+  MENU_TEXT.setFont(font);
+  MENU_TEXT.setString("DEBUG OUTPUT");
+  MENU_TEXT.setCharacterSize(12);
+  MENU_TEXT.setFillColor(sf::Color::Cyan);
+
+  sf::Text DIVIDER_TEXT;
+  DIVIDER_TEXT.setPosition(0.f, 14.f);
+  DIVIDER_TEXT.setFont(font);
+  DIVIDER_TEXT.setString("------------");
+  DIVIDER_TEXT.setCharacterSize(12);
+  DIVIDER_TEXT.setFillColor(sf::Color::Cyan);
+
   sf::Text FPS_TEXT;
+  FPS_TEXT.setPosition(0.f, 28.f);
   FPS_TEXT.setFont(font);
   FPS_TEXT.setString("FPS: 0");
   FPS_TEXT.setCharacterSize(12);
   FPS_TEXT.setFillColor(sf::Color::Cyan);
 
   sf::Text POWER_TEXT;
-  POWER_TEXT.setPosition(0.f, 14.f);
+  POWER_TEXT.setPosition(0.f, 42.f);
   POWER_TEXT.setFont(font);
   POWER_TEXT.setString("POWER: 0");
   POWER_TEXT.setCharacterSize(12);
@@ -155,6 +169,15 @@ int main() {
       }
     } 
 
+    bool didDetectBeat;
+    didDetectBeat = _fft.detectBeat();
+    if (didDetectBeat) {
+      // std::cout << "Beat" << std::endl;
+      POWER_TEXT.setString("BEAT DETECTION: [<");
+    } else {
+      POWER_TEXT.setString("BEAT DETECTION: [   <");
+    }
+
     sf::Time elapsed = clock.getElapsedTime();
     shader.setUniform("iTime", (float)elapsed.asSeconds());
 
@@ -164,9 +187,6 @@ int main() {
     shader.setUniform("blackAndWhite", BLACKANDWHITE);
     shader.setUniform("colorAMix", sf::Glsl::Vec3(COLORAMIX,COLORAMIX,COLORAMIX));
     shader.setUniform("colorBMix", sf::Glsl::Vec3(COLORBMIX,COLORBMIX,COLORBMIX));
-
-
-    _fft.update();
 
     // clear the buffers
     sf::Color clearColor(0, 0, 0, 255);
@@ -182,8 +202,12 @@ int main() {
     FPS_TEXT.setString("FPS: " + std::to_string(roundedFps));
     window.draw(FPS_TEXT);
 
-    float roundedPower = truncf2d(POWER * (currTime / 4));
-    POWER_TEXT.setString("POWER: " + std::to_string(roundedPower));
+    window.draw(POWER_TEXT);
+    window.draw(MENU_TEXT);
+    window.draw(DIVIDER_TEXT);
+
+    // float roundedPower = truncf2d(POWER * (currTime / 4));
+    // POWER_TEXT.setString("POWER: " + std::to_string(roundedPower));
     // window.draw(POWER_TEXT);
 
     // end the current frame (internally swaps the front and back buffers)

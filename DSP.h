@@ -15,7 +15,8 @@ class FFT {
 
     void hammingWindow();
     void fft(CArray &x);
-    void update();
+    bool detectBeat();
+    int sensitivity;
 
   private:
     std::string path;

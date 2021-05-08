@@ -53,7 +53,7 @@ void FFT::fft(CArray &x) {
   }
 }
 
-void FFT::update() {
+bool FFT::detectBeat() {
   hammingWindow();
   bin = CArray(sample.data(), bufferSize);
   fft(bin);
@@ -68,9 +68,11 @@ void FFT::update() {
     double freq = (2 * PI * ampRaw) / sampleCount;
 
     // beat detection
-    if (amp > 8) {
+    if (amp >= sensitivity) {
       std::cout << "AMP: " << amp << std::endl;
       std::cout << "FRQ: " << freq << " Hz" << std::endl;
+      return true;
     }
   }
+  return false;
 }
